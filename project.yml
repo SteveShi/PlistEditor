@@ -42,8 +42,6 @@ targets:
         COMBINE_HIDPI_IMAGES: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 轩楝 (Steve Shi)."
-        INFOPLIST_KEY_NSAppleScriptEnabled: YES
-        INFOPLIST_KEY_OSAScriptingDefinition: PlistEditor.sdef
         INFOPLIST_KEY_SUFeedURL: https://github.com/SteveShi/PlistEditor/releases/latest/download/appcast.xml
         INFOPLIST_KEY_SUPublicEDKey: MkHAeSDd//tR7+jzLDuwomA0aHHe5+35hbQ4csagwF0=
         INFOPLIST_KEY_SUEnableAutomaticChecks: YES
