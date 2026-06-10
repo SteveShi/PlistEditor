@@ -1,0 +1,21 @@
+{
+  "name": "Global Preferences",
+  "fileNamePatterns": [".GlobalPreferences.plist", "GlobalPreferences.plist", "com.apple.globalpreferences.plist"],
+  "keys": [
+    { "key": "AppleLanguages", "type": "Array", "description": "The user's preferred language identifiers in order of preference." },
+    { "key": "AppleLocale", "type": "String", "description": "The current locale settings combining language, region, and formatting." },
+    { "key": "AppleInterfaceStyle", "type": "String", "description": "The interface style mode (e.g. 'Dark' for Dark Mode)." },
+    { "key": "NSAutomaticCapitalizationEnabled", "type": "Boolean", "description": "Specifies whether automatic capitalization is enabled." },
+    { "key": "NSAutomaticDashSubstitutionEnabled", "type": "Boolean", "description": "Specifies whether smart dash substitution is enabled." },
+    { "key": "NSAutomaticPeriodSubstitutionEnabled", "type": "Boolean", "description": "Specifies whether period substitution by double-pressing space is enabled." },
+    { "key": "NSAutomaticQuoteSubstitutionEnabled", "type": "Boolean", "description": "Specifies whether smart quote substitution is enabled." },
+    { "key": "NSAutomaticSpellingCorrectionEnabled", "type": "Boolean", "description": "Specifies whether automatic spelling correction is enabled." },
+    { "key": "AppleMeasurementUnits", "type": "String", "description": "The preferred unit of measurement (Centimeters or Inches)." },
+    { "key": "AppleMetricUnits", "type": "Boolean", "description": "Specifies whether the metric system is preferred." },
+    { "key": "AppleTemperatureUnit", "type": "String", "description": "The preferred temperature scale (Celsius or Fahrenheit)." },
+    { "key": "AppleKeyboards", "type": "Array", "description": "List of active keyboard input sources." },
+    { "key": "AppleActionOnDoubleClick", "type": "String", "description": "Action performed when double-clicking a window title bar (e.g., Minimize, Maximize)." },
+    { "key": "NSUserDictionaryReplacementItems", "type": "Array", "description": "A list of text replacement shortcuts defined by the user." },
+    { "key": "AppleFontSmoothing", "type": "Integer", "description": "Determines the level of font smoothing (0 to disable, 8 for subpixel rendering)." }
+  ]
+}

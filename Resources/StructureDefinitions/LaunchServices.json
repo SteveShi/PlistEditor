@@ -1,0 +1,12 @@
+{
+  "name": "Launch Services Configuration",
+  "fileNamePatterns": ["LaunchServices.plist", "com.apple.LaunchServices*.plist"],
+  "keys": [
+    { "key": "LSHandlers", "type": "Array", "description": "A list of custom handlers mapped to specific URL schemes or content types." },
+    { "key": "LSHandlerRoleAll", "type": "String", "description": "The bundle identifier of the application preferred for all roles (viewer, editor, shell)." },
+    { "key": "LSHandlerURLScheme", "type": "String", "description": "The URL scheme (e.g., http, mailto) that the handler responds to." },
+    { "key": "LSHandlerContentType", "type": "String", "description": "The Uniform Type Identifier (UTI) describing the file type that the handler responds to." },
+    { "key": "LSHandlerRoleViewer", "type": "String", "description": "The bundle identifier of the application preferred for viewing the file format." },
+    { "key": "LSHandlerRoleEditor", "type": "String", "description": "The bundle identifier of the application preferred for editing the file format." }
+  ]
+}

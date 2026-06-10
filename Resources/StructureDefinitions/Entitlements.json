@@ -1,0 +1,22 @@
+{
+  "name": "Entitlements",
+  "fileNamePatterns": ["*.entitlements"],
+  "keys": [
+    { "key": "com.apple.security.app-sandbox", "type": "Boolean", "description": "Enables the App Sandbox, restricting access to system resources and user data." },
+    { "key": "com.apple.security.network.client", "type": "Boolean", "description": "Allows the app to make outgoing network connections." },
+    { "key": "com.apple.security.network.server", "type": "Boolean", "description": "Allows the app to listen for incoming network connections." },
+    { "key": "com.apple.security.files.user-selected.read-write", "type": "Boolean", "description": "Allows read-write access to files chosen by the user via an Open or Save panel." },
+    { "key": "com.apple.security.files.user-selected.read-only", "type": "Boolean", "description": "Allows read-only access to files chosen by the user via an Open panel." },
+    { "key": "com.apple.security.files.downloads.read-write", "type": "Boolean", "description": "Allows read-write access to the user's Downloads folder." },
+    { "key": "com.apple.security.device.camera", "type": "Boolean", "description": "Allows the app to record video from the built-in camera or external video inputs." },
+    { "key": "com.apple.security.device.audio-input", "type": "Boolean", "description": "Allows the app to record audio using the microphone or other audio inputs." },
+    { "key": "com.apple.security.device.usb", "type": "Boolean", "description": "Allows the app to interact with USB devices directly." },
+    { "key": "keychain-access-groups", "type": "Array", "description": "A list of keychain access groups that the app is a member of." },
+    { "key": "com.apple.developer.aps-environment", "type": "String", "description": "Specifies the environment for Apple Push Notification service (APNs). (e.g. development, production)" },
+    { "key": "com.apple.developer.associated-domains", "type": "Array", "description": "Specifies the domains associated with this app for features like Universal Links." },
+    { "key": "com.apple.developer.icloud-container-identifiers", "type": "Array", "description": "A list of iCloud containers that the app can access." },
+    { "key": "com.apple.developer.icloud-services", "type": "Array", "description": "Specifies which iCloud services (CloudKit, iCloud Documents) the app uses." },
+    { "key": "com.apple.developer.team-identifier", "type": "String", "description": "The Apple Developer Team Identifier associated with your provisioning profile." },
+    { "key": "com.apple.security.application-groups", "type": "Array", "description": "A list of App Groups shared between your app suite for container and keychain access." }
+  ]
+}

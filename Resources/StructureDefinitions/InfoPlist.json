@@ -1,0 +1,29 @@
+{
+  "name": "Information Property List",
+  "fileNamePatterns": ["Info.plist"],
+  "keys": [
+    { "key": "CFBundleIdentifier", "type": "String", "description": "A unique identifier for the bundle, in reverse-DNS format." },
+    { "key": "CFBundleName", "type": "String", "description": "A short display name for the bundle." },
+    { "key": "CFBundleDisplayName", "type": "String", "description": "The user-visible name of the bundle." },
+    { "key": "CFBundleExecutable", "type": "String", "description": "The name of the bundle's executable file." },
+    { "key": "CFBundleVersion", "type": "String", "description": "The build version number of the bundle." },
+    { "key": "CFBundleShortVersionString", "type": "String", "description": "The release (marketing) version number of the bundle." },
+    { "key": "CFBundlePackageType", "type": "String", "description": "The type of the bundle (e.g. APPL, FMWK, BNDL)." },
+    { "key": "CFBundleInfoDictionaryVersion", "type": "String", "description": "The version of the Info.plist format." },
+    { "key": "CFBundleDevelopmentRegion", "type": "String", "description": "The default language and region for the bundle." },
+    { "key": "CFBundleIconFile", "type": "String", "description": "The name of the bundle's icon file." },
+    { "key": "CFBundleDocumentTypes", "type": "Array", "description": "The document types supported by the app." },
+    { "key": "CFBundleURLTypes", "type": "Array", "description": "The URL schemes supported by the app." },
+    { "key": "LSMinimumSystemVersion", "type": "String", "description": "The minimum operating system version required to run the app." },
+    { "key": "LSApplicationCategoryType", "type": "String", "description": "The App Store category of the app." },
+    { "key": "LSUIElement", "type": "Boolean", "description": "Whether the app runs as an agent without a Dock icon." },
+    { "key": "NSHumanReadableCopyright", "type": "String", "description": "A human-readable copyright notice." },
+    { "key": "NSPrincipalClass", "type": "String", "description": "The name of the bundle's principal class." },
+    { "key": "NSMainStoryboardFile", "type": "String", "description": "The name of the app's main storyboard file." },
+    { "key": "UILaunchStoryboardName", "type": "String", "description": "The name of the launch screen storyboard." },
+    { "key": "NSAppTransportSecurity", "type": "Dictionary", "description": "App Transport Security configuration." },
+    { "key": "NSCameraUsageDescription", "type": "String", "description": "Why the app needs access to the camera." },
+    { "key": "NSMicrophoneUsageDescription", "type": "String", "description": "Why the app needs access to the microphone." },
+    { "key": "NSLocationWhenInUseUsageDescription", "type": "String", "description": "Why the app needs location access while in use." }
+  ]
+}

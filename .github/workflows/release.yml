@@ -1,0 +1,268 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'CHANGELOG.md'
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  inspect:
+    name: Inspect Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }}
+      version_tag: ${{ steps.get_version.outputs.VERSION_TAG }}
+      skipped: ${{ steps.check_version.outputs.skipped }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Extract Version from Changelog
+        id: get_version
+        run: |
+          # 提取版本号逻辑（保持您确认工作的版本）
+          VERSION=$(sed -n '/## \[/p' CHANGELOG.md | head -n 1 | cut -d'[' -f2 | cut -d']' -f1)
+          if [ -z "$VERSION" ]; then
+            echo "Error: Could not extract version from CHANGELOG.md"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION_TAG=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected Version: $VERSION"
+
+      - name: Check If Version Already Released
+        id: check_version
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.get_version.outputs.VERSION }}"
+          if gh release view "$TAG" >/dev/null 2>&1 && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "Version $TAG already exists. Skipping release."
+            echo "skipped=true" >> $GITHUB_OUTPUT
+          else
+            echo "skipped=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    name: Build and Release
+    needs: inspect
+    if: needs.inspect.outputs.skipped != 'true'
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Prepare Environment
+        run: |
+          echo "VERSION=${{ needs.inspect.outputs.version }}" >> $GITHUB_ENV
+          echo "VERSION_TAG=${{ needs.inspect.outputs.version_tag }}" >> $GITHUB_ENV
+
+      - name: Set up Xcode
+        uses: SteveShi/setup-xcode@v2
+        with:
+          xcode-version: 'latest-stable'
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: |
+          xcodegen --version
+          xcodegen generate --spec project.yml
+          
+      - name: Resolve Swift Packages
+        run: |
+          mkdir -p build
+          xcodebuild -resolvePackageDependencies -project PlistEditor.xcodeproj -scheme PlistEditor -derivedDataPath build
+          
+
+      - name: Build Universal Binary
+        run: |
+          VERSION_CLEAN=${{ env.VERSION }}
+          xcodebuild -scheme PlistEditor \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath build \
+            MARKETING_VERSION=$VERSION_CLEAN \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Verify App Bundle Version Keys
+        run: |
+          APP_PATH=$(find build/Build/Products/Release -name "PlistEditor.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "CRITICAL ERROR: PlistEditor.app not found!"
+            exit 1
+          fi
+          INFO_PLIST="$APP_PATH/Contents/Info.plist"
+          if [ ! -f "$INFO_PLIST" ]; then
+            echo "CRITICAL ERROR: Info.plist not found at $INFO_PLIST"
+            exit 1
+          fi
+          SHORT_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$INFO_PLIST" 2>/dev/null || true)
+          BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$INFO_PLIST" 2>/dev/null || true)
+          if [ -z "$SHORT_VERSION" ] || [ -z "$BUNDLE_VERSION" ]; then
+            echo "CRITICAL ERROR: Missing CFBundleShortVersionString or CFBundleVersion in Info.plist"
+            echo "CFBundleShortVersionString='$SHORT_VERSION'"
+            echo "CFBundleVersion='$BUNDLE_VERSION'"
+            exit 1
+          fi
+          echo "Info.plist versions OK: CFBundleShortVersionString=$SHORT_VERSION, CFBundleVersion=$BUNDLE_VERSION"
+
+      - name: Package App (ZIP and DMG)
+        run: |
+          rm -rf dmg_root deploy
+          APP_PATH=$(find build/Build/Products/Release -name "PlistEditor.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "CRITICAL ERROR: PlistEditor.app not found!"
+            exit 1
+          fi
+          APP_NAME=$(basename "$APP_PATH")
+          APP_DIR=$(dirname "$APP_PATH")
+          VERSION_CLEAN=${{ env.VERSION }}
+          ZIP_NAME="PlistEditor-${VERSION_CLEAN}-Universal.zip"
+          DMG_NAME="PlistEditor-${VERSION_CLEAN}-Universal.dmg"
+          
+          cd "$APP_DIR"
+          zip -r "$GITHUB_WORKSPACE/$ZIP_NAME" "$APP_NAME"
+          cd -
+          
+          mkdir -p dmg_root
+          cp -R "$APP_PATH" dmg_root/
+          hdiutil create -volname "PlistEditor" -srcfolder dmg_root -ov -format UDZO "$DMG_NAME"
+          
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+          echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
+
+      - name: Extract Release Notes (en & zh)
+        run: |
+          VERSION_CLEAN=${{ env.VERSION }}
+          # 提取当前版本的全部日志
+          awk "/^## \[$VERSION_CLEAN\]/{flag=1;next} /^## \[/{flag=0} flag" CHANGELOG.md > full_notes.md
+          
+          if [ ! -s full_notes.md ]; then
+            echo "Release for version $VERSION_CLEAN. Check CHANGELOG.md for details." > release_notes_en.md
+            cp release_notes_en.md release_notes_zh.md
+          else
+            # 按照 ### Chinese 分割
+            # 英文部分：从开头到 ### Chinese 之前
+            sed -n '1,/### Chinese/p' full_notes.md | grep -v "### Chinese" > release_notes_en.md
+            # 中文部分：从 ### Chinese 开始到结尾
+            sed -n '/### Chinese/,$p' full_notes.md | sed '1d' > release_notes_zh.md
+            
+            # 如果分割失败（比如没写 ### Chinese），则兜底
+            if [ ! -s release_notes_zh.md ]; then cp release_notes_en.md release_notes_zh.md; fi
+            if [ ! -s release_notes_en.md ]; then cp full_notes.md release_notes_en.md; fi
+          fi
+          
+          # 兼容原有的 body_path，使用全量日志作为 GitHub Release 页面展示
+          cp full_notes.md release_notes.md
+
+      - name: Generate Sparkle Appcast
+        env:
+          SPARKLE_SECRET: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. 获取最新 Sparkle 版本并下载工具
+          SPARKLE_VERSION=$(gh api repos/sparkle-project/Sparkle/releases/latest --jq '.tag_name' | sed 's/^v//')
+          curl -fL -H "User-Agent: curl" -o Sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          tar -xf Sparkle.tar.xz
+
+          # 2. 极致清理私钥 (确保没有任何不可见字符)
+          CLEAN_KEY=$(echo "$SPARKLE_SECRET" | sed 's/EdDSAPrivateKey://' | tr -dc 'A-Za-z0-9+/=')
+          
+          if [ -z "$CLEAN_KEY" ]; then
+            echo "ERROR: SPARKLE_PRIVATE_KEY secret is missing!"
+            exit 1
+          fi
+
+          # 3. 准备发布目录
+          mkdir -p deploy
+          cp "${{ env.ZIP_NAME }}" deploy/
+          # 准备多语言更新日志文件
+          cp release_notes_en.md "deploy/release_notes_en.md"
+          cp release_notes_zh.md "deploy/release_notes_zh.md"
+          # 默认版本（供 generate_appcast 自动创建基础项）
+          cp release_notes_en.md "deploy/release_notes.md"
+          
+          # 4. 执行签名并生成 Appcast
+          # 设置动态库路径以确保 bin/generate_appcast 能找到 Sparkle.framework
+          export DYLD_FRAMEWORK_PATH="$PWD"
+          
+          echo "Running generate_appcast using stdin method..."
+          echo "$CLEAN_KEY" | ./bin/generate_appcast \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/SteveShi/PlistEditor/releases/download/${{ env.VERSION_TAG }}/" \
+            deploy/
+          
+          if [ -f "deploy/appcast.xml" ]; then
+            mv deploy/appcast.xml .
+            
+            # 1. 清理可能自动生成的描述或旧链接 (MacOS BSD sed 语法适配)
+            sed -i.bak '/<description>/d' appcast.xml
+            sed -i.bak '/<sparkle:releaseNotesLink>/d' appcast.xml
+            
+            # 2. 准备链接内容
+            EN_LINK="https://github.com/SteveShi/PlistEditor/releases/download/${{ env.VERSION_TAG }}/release_notes_en.md"
+            ZH_LINK="https://github.com/SteveShi/PlistEditor/releases/download/${{ env.VERSION_TAG }}/release_notes_zh.md"
+            
+            # 3. 注入Localized链接（在 <enclosure 标签之前）
+            # 注意：BSD sed 的 i 指令后面需要换行符
+            sed -i.bak "/<enclosure/i\\
+            <sparkle:releaseNotesLink xml:lang=\"en\">$EN_LINK</sparkle:releaseNotesLink>" appcast.xml
+            sed -i.bak "/<enclosure/i\\
+            <sparkle:releaseNotesLink xml:lang=\"zh-Hans\">$ZH_LINK</sparkle:releaseNotesLink>" appcast.xml
+            
+            rm appcast.xml.bak
+            echo "Appcast generated successfully with localized Markdown support."
+          else
+            echo "ERROR: generate_appcast failed to produce appcast.xml."
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            ${{ env.ZIP_NAME }}
+            ${{ env.DMG_NAME }}
+            release_notes_en.md
+            release_notes_zh.md
+            appcast.xml
+          name: Release ${{ env.VERSION_TAG }}
+          tag_name: ${{ env.VERSION_TAG }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew Cask
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${{ env.VERSION }}"
+          SHA256=$(shasum -a 256 "${{ env.DMG_NAME }}" | awk '{print $1}')
+          
+          git clone https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/SteveShi/homebrew-tap.git tap-repo
+          cd tap-repo
+          
+          sed -i '' "s/version \".*\"/version \"$VERSION\"/" Casks/plisteditor.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"$SHA256\"/" Casks/plisteditor.rb
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/plisteditor.rb
+          git commit -m "Update plisteditor to $VERSION"
+          git push
