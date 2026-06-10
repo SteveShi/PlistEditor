@@ -44,16 +44,28 @@ struct PlistEditorApp: App {
     }
 }
 
-/// Minimal delegate whose sole job is to install `AutosaveDocumentController`
-/// very early in the app lifecycle, before `NSDocumentController.shared` is
-/// first queried by `DocumentGroup`.
+/// Minimal delegate whose sole job is to configure `NSDocumentController.shared`
+/// properties (like `autosavingDelay`) dynamically after the app launches.
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var controller: AutosaveDocumentController?
+    private var observation: (any NSObjectProtocol)?
 
-    func applicationWillFinishLaunching(_ notification: Notification) {
-        // Creating an NSDocumentController subclass automatically registers it
-        // as the shared instance when done before any other access.
-        controller = AutosaveDocumentController()
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        setupAutosaveDelay()
+        
+        observation = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.setupAutosaveDelay()
+        }
+    }
+
+    private func setupAutosaveDelay() {
+        let enabled = UserDefaults.standard.bool(forKey: SettingsKey.enableAutosaving)
+        // macOS default autosave delay is 30.0 seconds. If disabled, set it to 0.0.
+        NSDocumentController.shared.autosavingDelay = enabled ? 30.0 : 0.0
     }
 
     /// Controls whether activating the app with no open windows creates a new

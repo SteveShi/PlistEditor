@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 /// than a value-type `FileDocument`.
 // The document is created on a background queue when opening a file, so it is
 // not main-actor isolated. All mutation happens on the main thread at runtime.
-final class PlistDocument: ReferenceFileDocument, @unchecked Sendable {
+final class PlistDocument: NSObject, ReferenceFileDocument, @unchecked Sendable {
     typealias Snapshot = Data
 
     static var readableContentTypes: [UTType] {
@@ -27,9 +27,10 @@ final class PlistDocument: ReferenceFileDocument, @unchecked Sendable {
     /// Per-node "View As" presentation overrides (display state, not persisted).
     @Published var viewAs: [PlistNode.ID: ValueFormatter] = [:]
 
-    init() {
+    override init() {
         root = PlistNode(kind: .dictionary([]))
         format = AppSettings.storedDefaultFormat
+        super.init()
         regenerateSourceText()
     }
 
@@ -43,6 +44,7 @@ final class PlistDocument: ReferenceFileDocument, @unchecked Sendable {
         self.root = parsed.root
         self.format = resolvedFormat
         self.sourceText = (try? PlistTextRenderer.text(from: parsed.root, format: resolvedFormat)) ?? ""
+        super.init()
     }
 
     func snapshot(contentType: UTType) throws -> Data {

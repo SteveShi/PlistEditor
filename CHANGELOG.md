@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.1] - 2026-06-10
+
+<div lang="en">
+
+### Fixed
+- Fixed a startup crash on macOS 15+ (Sequoia) caused by Swift runtime class name reflection and custom `NSDocumentController` subclass pointer authentication (PAC) mismatch.
+
+</div>
+
+### Chinese
+
+---
+
+<div lang="zh">
+
+### 修复
+- 修复了在 macOS 15+ (Sequoia) 上由于 Swift 运行时类名反射以及自定义 `NSDocumentController` 子类导致指针认证 (PAC) 不匹配而引发的启动崩溃问题。
+
+</div>
+
 ## [1.1.0] - 2026-06-10
 
 <div lang="en">
