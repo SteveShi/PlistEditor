@@ -1,20 +1,19 @@
 import AppKit
 
 extension NSDocument {
-    @objc var scriptingFormat: String {
-        get {
-            if let plistDoc = findPlistDocument(in: self) {
-                return plistDoc.format.rawValue
-            }
-            return "xml"
+    @objc func scriptingFormat() -> String {
+        if let plistDoc = findPlistDocument(in: self) {
+            return plistDoc.format.rawValue
         }
-        set {
-            let formatString = newValue.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-            if let plistDoc = findPlistDocument(in: self) {
-                DispatchQueue.main.async {
-                    if let format = PlistFormat(rawValue: formatString) {
-                        plistDoc.setFormat(format, undoManager: self.undoManager)
-                    }
+        return "xml"
+    }
+
+    @objc func setScriptingFormat(_ newValue: String) {
+        let formatString = newValue.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if let plistDoc = findPlistDocument(in: self) {
+            DispatchQueue.main.async {
+                if let format = PlistFormat(rawValue: formatString) {
+                    plistDoc.setFormat(format, undoManager: self.undoManager)
                 }
             }
         }
