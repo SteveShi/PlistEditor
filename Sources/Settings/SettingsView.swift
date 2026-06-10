@@ -9,13 +9,19 @@ struct SettingsView: View {
     var body: some View {
         TabView(selection: $selection) {
             GeneralSettingsTab()
-                .tabItem { Text("settings.tab.general") }
+                .tabItem {
+                    Label("settings.tab.general", systemImage: "gearshape")
+                }
                 .tag(Tab.general)
             DisplaySettingsTab()
-                .tabItem { Text("settings.tab.display") }
+                .tabItem {
+                    Label("settings.tab.display", systemImage: "paintpalette")
+                }
                 .tag(Tab.display)
             BrowsingSettingsTab()
-                .tabItem { Text("settings.tab.browsing") }
+                .tabItem {
+                    Label("settings.tab.browsing", systemImage: "magnifyingglass")
+                }
                 .tag(Tab.browsing)
         }
         .frame(width: 560, height: 470)
