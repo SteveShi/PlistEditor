@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.1.2] - 2026-06-10
+
+<div lang="en">
+
+### Added
+- Added context menus for outline view items with actions: Set to Default Value, Copy As (XML/Binary/JSON), Edit Value, and Sort Values.
+- Associated the app with Property List, JSON, and XML file types to show up in macOS "Open With" menu.
+
+</div>
+
+### Chinese
+
+---
+
+<div lang="zh">
+
+### 新增功能
+- 为大纲视图中的节点项新增了右键上下文菜单，支持“设为默认值”、“复制为 (XML/Binary/JSON)”、“编辑值”和“排序值”等操作。
+- 关联了属性列表 (Property List)、JSON 和 XML 文件类型，以支持在 macOS“打开方式”菜单中打开。
+
+</div>
+
 ## [1.1.1] - 2026-06-10
 
 <div lang="en">

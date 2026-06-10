@@ -4,14 +4,15 @@ import SwiftUI
 /// is supported by flattening the currently visible rows and drawing disclosure
 /// chevrons in the Key cell, which sidesteps SwiftUI `Table`'s limited support
 /// for recursive hierarchies.
-struct PlistOutlineView: View {
+struct PlistOutlineView<ContextMenu: View>: View {
     @ObservedObject var document: PlistDocument
     @Binding var selection: Set<PlistNode.ID>
     @Binding var expanded: Set<PlistNode.ID>
     let definition: StructureDefinition?
     let viewBySubkey: String?
+    let undoManager: UndoManager?
+    @ViewBuilder let contextMenu: (PlistNode) -> ContextMenu
     @ObservedObject private var settings = AppSettings.shared
-    @Environment(\.undoManager) private var undoManager
 
     private var visibleRows: [PlistNode] {
         var rows: [PlistNode] = []
@@ -74,6 +75,9 @@ struct PlistOutlineView: View {
         } rows: {
             ForEach(visibleRows) { node in
                 TableRow(node)
+                    .contextMenu {
+                        contextMenu(node)
+                    }
             }
         }
         .font(settings.outlineFont.swiftUIFont)

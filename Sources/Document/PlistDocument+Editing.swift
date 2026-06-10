@@ -196,6 +196,27 @@ extension PlistDocument {
         didMutateOutline()
     }
 
+    func sortValues(of node: PlistNode, undoManager: UndoManager?) {
+        guard node.isContainer else { return }
+        let originalChildren = node.children
+        let sortedChildren = originalChildren.sorted { c1, c2 in
+            let v1 = PlistValueText.editingString(for: c1)
+            let v2 = PlistValueText.editingString(for: c2)
+            return v1.localizedStandardCompare(v2) == .orderedAscending
+        }
+        let changed = !sortedChildren.elementsEqual(originalChildren, by: { $0 === $1 })
+        guard changed else { return }
+
+        node.setChildren(sortedChildren)
+        undoManager?.registerUndo(withTarget: self) { document in
+            MainActor.assumeIsolated {
+                node.setChildren(originalChildren)
+                document.didMutateOutline()
+            }
+        }
+        didMutateOutline()
+    }
+
     @discardableResult
     func paste(_ nodes: [PlistNode], into parent: PlistNode, at index: Int, undoManager: UndoManager?) -> [PlistNode] {
         guard parent.isContainer else { return [] }

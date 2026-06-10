@@ -7,7 +7,15 @@ struct ContentView: View {
     var fileURL: URL?
     @State private var selection = Set<PlistNode.ID>()
     @State private var expanded = Set<PlistNode.ID>()
-    @Environment(\.undoManager) private var undoManager
+    @Environment(\.undoManager) private var envUndoManager
+
+    private var undoManager: UndoManager? {
+        #if os(macOS)
+        return NSDocumentController.shared.currentDocument?.undoManager ?? envUndoManager
+        #else
+        return envUndoManager
+        #endif
+    }
 
     @State private var findVisible = false
     @State private var findQuery = ""
@@ -25,6 +33,7 @@ struct ContentView: View {
     @State private var viewBySubkey: String? = nil
     @State private var showSubkeyPopover = false
     @State private var subkeyInput = ""
+    @State private var editingNodeValue: PlistNode? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,8 +52,17 @@ struct ContentView: View {
                 Divider()
             }
             VSplitView {
-                PlistOutlineView(document: document, selection: $selection, expanded: $expanded, definition: activeDefinition, viewBySubkey: viewBySubkey)
-                    .frame(minHeight: 220)
+                PlistOutlineView(
+                    document: document,
+                    selection: $selection,
+                    expanded: $expanded,
+                    definition: activeDefinition,
+                    viewBySubkey: viewBySubkey,
+                    undoManager: undoManager
+                ) { node in
+                    outlineContextMenu(for: node)
+                }
+                .frame(minHeight: 220)
                 SourcePane(document: document)
                     .frame(minHeight: 140)
             }
@@ -52,6 +70,19 @@ struct ContentView: View {
         .frame(minWidth: 680, minHeight: 480)
         .toolbar { toolbarContent }
         .focusedValue(\.editorActions, editorActions)
+        .popover(item: $editingNodeValue) { node in
+            VStack(alignment: .leading, spacing: 8) {
+                Text("menu.editValue").font(.headline)
+                TextField("", text: Binding(
+                    get: { PlistValueText.editingString(for: node) },
+                    set: { text in document.commitValueText(text, on: node, undoManager: undoManager) }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 260)
+                .onSubmit { editingNodeValue = nil }
+            }
+            .padding()
+        }
         .onAppear {
             applyInitialExpansion()
             startFileWatcher()
@@ -581,6 +612,188 @@ struct ContentView: View {
                 of: findQuery, with: findReplacement, options: [.caseInsensitive]
             )
             document.commitValueText(newText, on: node, undoManager: undoManager)
+        }
+    }
+
+    // MARK: Context Menu Builders
+
+    @ViewBuilder
+    private func outlineContextMenu(for node: PlistNode) -> some View {
+        if selection.contains(node.id) && selection.count > 1 {
+            multiNodeContextMenu(for: selectedNodes)
+        } else {
+            singleNodeContextMenu(node)
+        }
+    }
+
+    @ViewBuilder
+    private func singleNodeContextMenu(_ node: PlistNode) -> some View {
+        let isRoot = (node.parent == nil)
+        let isContainer = node.isContainer
+
+        if !isRoot {
+            Button("menu.newSibling") { addSibling() }
+        }
+        if isContainer {
+            Button("menu.newChild") { addChild() }
+        }
+
+        Button("menu.setToDefaultValue") {
+            let defaultKind = PlistDocument.defaultKind(for: node.plistType)
+            document.setKind(defaultKind, on: node, undoManager: undoManager)
+        }
+        .disabled(isRoot)
+
+        Divider()
+
+        Button("menu.cut") { cutSelection() }
+            .disabled(isRoot)
+
+        Button("menu.copy") { copySelection() }
+
+        Menu("menu.copyAs") {
+            Button(action: { copyAsFormat(.xml) }) { Text(verbatim: "XML") }
+            Button(action: { copyAsFormat(.binary) }) { Text(verbatim: "Binary") }
+            Button(action: { copyAsFormat(.json) }) { Text(verbatim: "JSON") }
+        }
+
+        Button("menu.delete") { deleteSelection() }
+            .disabled(isRoot)
+
+        Button("menu.duplicate") { duplicate() }
+            .disabled(isRoot)
+
+        Button("menu.editValue") {
+            editingNodeValue = node
+        }
+        .disabled(isContainer || isRoot)
+
+        let formatters = ValueFormatter.formatters(for: node.plistType)
+        if formatters.isEmpty {
+            Menu("menu.viewAs") {
+                EmptyView()
+            }
+            .disabled(true)
+        } else {
+            let current = document.viewAs[node.id] ?? ValueFormatter.defaultFormatter(for: node.plistType)
+            Menu("menu.viewAs") {
+                ForEach(formatters) { formatter in
+                    Button {
+                        applyViewAs(formatter, to: node)
+                    } label: {
+                        if formatter == current {
+                            Label(formatter.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(verbatim: formatter.displayName)
+                        }
+                    }
+                }
+            }
+        }
+
+        Divider()
+
+        if node.plistType == .dictionary {
+            Button("menu.sortKeys") {
+                sortKeys()
+            }
+        }
+
+        if isContainer || (node.parent?.isContainer == true) {
+            Button("menu.sortValues") {
+                sortValuesOfSelected()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func multiNodeContextMenu(for nodes: [PlistNode]) -> some View {
+        Button("menu.cut") { cutSelection() }
+        Button("menu.copy") { copySelection() }
+        Button("menu.delete") { deleteSelection() }
+        Button("menu.duplicate") { duplicate() }
+
+        Divider()
+
+        if nodes.contains(where: { $0.plistType == .dictionary }) {
+            Button("menu.sortKeys") {
+                sortKeys()
+            }
+        }
+
+        if nodes.contains(where: { $0.isContainer || $0.parent?.isContainer == true }) {
+            Button("menu.sortValues") {
+                sortValuesOfSelected()
+            }
+        }
+    }
+
+    private func copyAsFormat(_ format: PlistFormat) {
+        let nodes = selectedNodes
+        let topLevel = nodes.filter { node in
+            var ancestor = node.parent
+            while let current = ancestor {
+                if nodes.contains(where: { $0 === current }) { return false }
+                ancestor = current.parent
+            }
+            return true
+        }
+        guard !topLevel.isEmpty else { return }
+
+        let obj: Any
+        if topLevel.count == 1 {
+            obj = PlistSerializer.foundationObject(from: topLevel[0])
+        } else {
+            obj = topLevel.map { PlistSerializer.foundationObject(from: $0) }
+        }
+
+        let pb = NSPasteboard.general
+        pb.clearContents()
+
+        do {
+            if format == .json {
+                let data = try JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys])
+                if let str = String(data: data, encoding: .utf8) {
+                    pb.setString(str, forType: .string)
+                }
+            } else {
+                let plistFormat: PropertyListSerialization.PropertyListFormat = (format == .binary) ? .binary : .xml
+                let data = try PropertyListSerialization.data(fromPropertyList: obj, format: plistFormat, options: 0)
+                if format == .binary {
+                    pb.setData(data, forType: NSPasteboard.PasteboardType("NSPropertyListPboardType"))
+                    pb.setString(data.base64EncodedString(), forType: .string)
+                } else {
+                    if let str = String(data: data, encoding: .utf8) {
+                        pb.setString(str, forType: .string)
+                    }
+                }
+            }
+        } catch {
+            print("Copy as format error: \(error)")
+        }
+    }
+
+    private func sortValuesOfSelected() {
+        var targetContainers: [PlistNode] = []
+        if selectedNodes.isEmpty {
+            if document.root.isContainer {
+                targetContainers.append(document.root)
+            }
+        } else {
+            for node in selectedNodes {
+                if node.isContainer {
+                    if !targetContainers.contains(where: { $0 === node }) {
+                        targetContainers.append(node)
+                    }
+                } else if let parent = node.parent, parent.isContainer {
+                    if !targetContainers.contains(where: { $0 === parent }) {
+                        targetContainers.append(parent)
+                    }
+                }
+            }
+        }
+        for container in targetContainers {
+            document.sortValues(of: container, undoManager: undoManager)
         }
     }
 }
