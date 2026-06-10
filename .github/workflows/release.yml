@@ -134,7 +134,15 @@ jobs:
           ZIP_NAME="PlistEditor-${VERSION_CLEAN}-Universal.zip"
           DMG_NAME="PlistEditor-${VERSION_CLEAN}-Universal.dmg"
           
-          # 强制执行 Ad-hoc 本地代码签名以确保 ARM64 架构下的 PAC 校验通过，避免因元数据未签名导致 demangling 崩溃
+          # 强制自内而外执行 Ad-hoc 代码签名，以确保 ARM64 下嵌套的 Sparkle.framework 和 App 的 PAC 校验完美通过
+          if [ -d "$APP_PATH/Contents/Frameworks/Sparkle.framework" ]; then
+            echo "Signing nested Sparkle.framework..."
+            codesign --force --sign - --timestamp=none "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/A/Resources/Autoupdate.app" 2>/dev/null || true
+            codesign --force --sign - --timestamp=none "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/Resources/Autoupdate.app" 2>/dev/null || true
+            codesign --force --sign - --timestamp=none "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/Helpers/Updater.app" 2>/dev/null || true
+            codesign --force --sign - --timestamp=none "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B"
+          fi
+          echo "Signing PlistEditor.app shell..."
           codesign --force --sign - --timestamp=none --deep "$APP_PATH"
           
           cd "$APP_DIR"
