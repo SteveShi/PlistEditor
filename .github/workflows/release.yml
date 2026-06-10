@@ -134,6 +134,9 @@ jobs:
           ZIP_NAME="PlistEditor-${VERSION_CLEAN}-Universal.zip"
           DMG_NAME="PlistEditor-${VERSION_CLEAN}-Universal.dmg"
           
+          # 强制执行 Ad-hoc 本地代码签名以确保 ARM64 架构下的 PAC 校验通过，避免因元数据未签名导致 demangling 崩溃
+          codesign --force --sign - --timestamp=none --deep "$APP_PATH"
+          
           cd "$APP_DIR"
           zip -r "$GITHUB_WORKSPACE/$ZIP_NAME" "$APP_NAME"
           cd -
