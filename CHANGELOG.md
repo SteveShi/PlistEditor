@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.1.4] - 2026-07-23
+
+<div lang="en">
+
+### Fixed
+- Fixed Sparkle automatic update initialization error by embedding `SUFeedURL`, `SUPublicEDKey`, and Sparkle update settings directly into `Info.plist`.
+- Implemented `feedURLString(for:)` in `SparkleUpdaterDelegate` for reliable update feed resolution.
+
+</div>
+
+### Chinese
+
+---
+
+<div lang="zh">
+
+### 修复
+- 修复了 Sparkle 自动更新初始化报错“未配置 SUFeedURL”的问题，将 `SUFeedURL`、`SUPublicEDKey` 及自动更新相关键补全至 `Info.plist`。
+- 在 `SparkleUpdaterDelegate` 中实现了 `feedURLString(for:)` 委托方法，提供更可靠的 Appcast Feed 解析保障。
+
+</div>
+
 ## [1.1.3] - 2026-07-23
 
 <div lang="en">

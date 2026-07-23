@@ -7,6 +7,10 @@ import Combine
 final class SparkleUpdaterDelegate: NSObject, SPUUpdaterDelegate {
     private let logger = Logger(subsystem: "com.steveshi.plisteditor", category: "Sparkle")
 
+    func feedURLString(for updater: SPUUpdater) -> String? {
+        return "https://github.com/SteveShi/PlistEditor/releases/latest/download/appcast.xml"
+    }
+
     func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
         logError("Update aborted", error: error)
     }
