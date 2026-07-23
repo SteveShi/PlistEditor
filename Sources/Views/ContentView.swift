@@ -240,6 +240,36 @@ struct ContentView: View {
         return result
     }
 
+    /// Returns the top-most selected nodes (filtering out nodes whose ancestors are also selected).
+    private func topLevelSelectedNodes(requireParent: Bool = false) -> [PlistNode] {
+        let nodes = requireParent ? selectedNodes.filter { $0.parent != nil } : selectedNodes
+        return nodes.filter { node in
+            var ancestor = node.parent
+            while let current = ancestor {
+                if nodes.contains(where: { $0 === current }) { return false }
+                ancestor = current.parent
+            }
+            return true
+        }
+    }
+
+    /// Collects dictionary or container nodes from selection (or root if selection is empty).
+    private func targetContainers(matching condition: (PlistNode) -> Bool) -> [PlistNode] {
+        var targets: [PlistNode] = []
+        if selectedNodes.isEmpty {
+            if condition(document.root) { targets.append(document.root) }
+        } else {
+            for node in selectedNodes {
+                if condition(node) {
+                    if !targets.contains(where: { $0 === node }) { targets.append(node) }
+                } else if let parent = node.parent, condition(parent) {
+                    if !targets.contains(where: { $0 === parent }) { targets.append(parent) }
+                }
+            }
+        }
+        return targets
+    }
+
     /// The node a new sibling/child is added relative to (first selection or root).
     private var target: PlistNode { selectedNodes.first ?? document.root }
 
@@ -316,31 +346,14 @@ struct ContentView: View {
     private func deleteSelection() {
         // Delete only the top-most selected nodes so a selected subtree isn't
         // deleted twice; identity lookups keep indices correct between removals.
-        let nodes = selectedNodes.filter { $0.parent != nil }
-        let topLevel = nodes.filter { node in
-            var ancestor = node.parent
-            while let current = ancestor {
-                if nodes.contains(where: { $0 === current }) { return false }
-                ancestor = current.parent
-            }
-            return true
-        }
-        for node in topLevel {
+        for node in topLevelSelectedNodes(requireParent: true) {
             document.delete(node, undoManager: undoManager)
         }
         selection.removeAll()
     }
 
     private func copySelection() {
-        let nodes = selectedNodes
-        let topLevel = nodes.filter { node in
-            var ancestor = node.parent
-            while let current = ancestor {
-                if nodes.contains(where: { $0 === current }) { return false }
-                ancestor = current.parent
-            }
-            return true
-        }
+        let topLevel = topLevelSelectedNodes()
         guard !topLevel.isEmpty else { return }
 
         let wrappedList = topLevel.map { node -> [String: Any] in
@@ -438,26 +451,7 @@ struct ContentView: View {
     }
 
     private func sortKeys() {
-        var targetDicts: [PlistNode] = []
-        if selectedNodes.isEmpty {
-            if document.root.plistType == .dictionary {
-                targetDicts.append(document.root)
-            }
-        } else {
-            for node in selectedNodes {
-                if node.plistType == .dictionary {
-                    if !targetDicts.contains(where: { $0 === node }) {
-                        targetDicts.append(node)
-                    }
-                } else if let parent = node.parent, parent.plistType == .dictionary {
-                    if !targetDicts.contains(where: { $0 === parent }) {
-                        targetDicts.append(parent)
-                    }
-                }
-            }
-        }
-
-        for dict in targetDicts {
+        for dict in targetContainers(matching: { $0.plistType == .dictionary }) {
             document.sortChildren(of: dict, undoManager: undoManager)
         }
     }
@@ -729,15 +723,7 @@ struct ContentView: View {
     }
 
     private func copyAsFormat(_ format: PlistFormat) {
-        let nodes = selectedNodes
-        let topLevel = nodes.filter { node in
-            var ancestor = node.parent
-            while let current = ancestor {
-                if nodes.contains(where: { $0 === current }) { return false }
-                ancestor = current.parent
-            }
-            return true
-        }
+        let topLevel = topLevelSelectedNodes()
         guard !topLevel.isEmpty else { return }
 
         let obj: Any
@@ -774,25 +760,7 @@ struct ContentView: View {
     }
 
     private func sortValuesOfSelected() {
-        var targetContainers: [PlistNode] = []
-        if selectedNodes.isEmpty {
-            if document.root.isContainer {
-                targetContainers.append(document.root)
-            }
-        } else {
-            for node in selectedNodes {
-                if node.isContainer {
-                    if !targetContainers.contains(where: { $0 === node }) {
-                        targetContainers.append(node)
-                    }
-                } else if let parent = node.parent, parent.isContainer {
-                    if !targetContainers.contains(where: { $0 === parent }) {
-                        targetContainers.append(parent)
-                    }
-                }
-            }
-        }
-        for container in targetContainers {
+        for container in targetContainers(matching: { $0.isContainer }) {
             document.sortValues(of: container, undoManager: undoManager)
         }
     }

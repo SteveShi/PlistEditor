@@ -96,81 +96,17 @@ enum ValueFormatting {
         case .base64:
             return dataValue(of: node).base64EncodedString()
         case .uint16LE:
-            let data = dataValue(of: node)
-            var values: [UInt16] = []
-            let count = data.count / 2
-            data.withUnsafeBytes { ptr in
-                guard let base = ptr.baseAddress else { return }
-                for i in 0..<count {
-                    let val = base.load(fromByteOffset: i * 2, as: UInt16.self)
-                    values.append(UInt16(littleEndian: val))
-                }
-            }
-            return values.map { String($0) }.joined(separator: " ")
+            return decodeIntegerArray(UInt16.self, from: dataValue(of: node), isLittleEndian: true)
         case .uint16BE:
-            let data = dataValue(of: node)
-            var values: [UInt16] = []
-            let count = data.count / 2
-            data.withUnsafeBytes { ptr in
-                guard let base = ptr.baseAddress else { return }
-                for i in 0..<count {
-                    let val = base.load(fromByteOffset: i * 2, as: UInt16.self)
-                    values.append(UInt16(bigEndian: val))
-                }
-            }
-            return values.map { String($0) }.joined(separator: " ")
+            return decodeIntegerArray(UInt16.self, from: dataValue(of: node), isLittleEndian: false)
         case .uint32LE:
-            let data = dataValue(of: node)
-            var values: [UInt32] = []
-            let count = data.count / 4
-            data.withUnsafeBytes { ptr in
-                guard let base = ptr.baseAddress else { return }
-                for i in 0..<count {
-                    let val = base.load(fromByteOffset: i * 4, as: UInt32.self)
-                    values.append(UInt32(littleEndian: val))
-                }
-            }
-            return values.map { String($0) }.joined(separator: " ")
+            return decodeIntegerArray(UInt32.self, from: dataValue(of: node), isLittleEndian: true)
         case .uint32BE:
-            let data = dataValue(of: node)
-            var values: [UInt32] = []
-            let count = data.count / 4
-            data.withUnsafeBytes { ptr in
-                guard let base = ptr.baseAddress else { return }
-                for i in 0..<count {
-                    let val = base.load(fromByteOffset: i * 4, as: UInt32.self)
-                    values.append(UInt32(bigEndian: val))
-                }
-            }
-            return values.map { String($0) }.joined(separator: " ")
+            return decodeIntegerArray(UInt32.self, from: dataValue(of: node), isLittleEndian: false)
         case .float32LE:
-            let data = dataValue(of: node)
-            var values: [Float] = []
-            let count = data.count / 4
-            data.withUnsafeBytes { ptr in
-                guard let base = ptr.baseAddress else { return }
-                for i in 0..<count {
-                    let raw = base.load(fromByteOffset: i * 4, as: UInt32.self)
-                    let u = UInt32(littleEndian: raw)
-                    let f = Float(bitPattern: u)
-                    values.append(f)
-                }
-            }
-            return values.map { String($0) }.joined(separator: " ")
+            return decodeFloat32Array(from: dataValue(of: node), isLittleEndian: true)
         case .float32BE:
-            let data = dataValue(of: node)
-            var values: [Float] = []
-            let count = data.count / 4
-            data.withUnsafeBytes { ptr in
-                guard let base = ptr.baseAddress else { return }
-                for i in 0..<count {
-                    let raw = base.load(fromByteOffset: i * 4, as: UInt32.self)
-                    let u = UInt32(bigEndian: raw)
-                    let f = Float(bitPattern: u)
-                    values.append(f)
-                }
-            }
-            return values.map { String($0) }.joined(separator: " ")
+            return decodeFloat32Array(from: dataValue(of: node), isLittleEndian: false)
         }
     }
 
@@ -258,5 +194,35 @@ enum ValueFormatting {
             raw = (raw << 8) | UInt32(byte)
         }
         return Int64(Int32(bitPattern: raw))
+    }
+
+    private static func decodeIntegerArray<T: FixedWidthInteger>(_ type: T.Type, from data: Data, isLittleEndian: Bool) -> String {
+        let size = MemoryLayout<T>.size
+        let count = data.count / size
+        var values: [T] = []
+        values.reserveCapacity(count)
+        data.withUnsafeBytes { ptr in
+            guard let base = ptr.baseAddress else { return }
+            for i in 0..<count {
+                let val = base.load(fromByteOffset: i * size, as: T.self)
+                values.append(isLittleEndian ? T(littleEndian: val) : T(bigEndian: val))
+            }
+        }
+        return values.map { String(describing: $0) }.joined(separator: " ")
+    }
+
+    private static func decodeFloat32Array(from data: Data, isLittleEndian: Bool) -> String {
+        let count = data.count / 4
+        var values: [Float] = []
+        values.reserveCapacity(count)
+        data.withUnsafeBytes { ptr in
+            guard let base = ptr.baseAddress else { return }
+            for i in 0..<count {
+                let raw = base.load(fromByteOffset: i * 4, as: UInt32.self)
+                let u = isLittleEndian ? UInt32(littleEndian: raw) : UInt32(bigEndian: raw)
+                values.append(Float(bitPattern: u))
+            }
+        }
+        return values.map { String($0) }.joined(separator: " ")
     }
 }

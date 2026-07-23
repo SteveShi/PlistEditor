@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.1.3] - 2026-07-23
+
+<div lang="en">
+
+### Refactored
+- Deduplicated byte-decoding loops across integer and floating-point presentations (`ValueFormatter`).
+- Consolidated selection helper logic and container traversal in outline view operations (`ContentView`).
+- Cleaned up unreferenced legacy files.
+
+</div>
+
+### Chinese
+
+---
+
+<div lang="zh">
+
+### 重构优化
+- 重构并精简了 Data 数字/浮点数字节序转换的重复编解码逻辑 (`ValueFormatter`)。
+- 提炼了编辑操作与上下文菜单中的节点选择和容器遍历辅助逻辑 (`ContentView`)。
+- 清理了仓库根目录下的非必要残余文件。
+
+</div>
+
 ## [1.1.2] - 2026-06-10
 
 <div lang="en">
