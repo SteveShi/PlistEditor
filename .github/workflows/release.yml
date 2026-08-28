@@ -120,41 +120,64 @@ jobs:
           fi
           echo "Info.plist versions OK: CFBundleShortVersionString=$SHORT_VERSION, CFBundleVersion=$BUNDLE_VERSION"
 
-      - name: Package App (ZIP and DMG)
+      - name: Package App (Universal and arm64)
         run: |
-          rm -rf dmg_root deploy
+          rm -rf dmg_root deploy Build/Universal Build/arm64
           APP_PATH=$(find build/Build/Products/Release -name "PlistEditor.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "CRITICAL ERROR: PlistEditor.app not found!"
             exit 1
           fi
-          APP_NAME=$(basename "$APP_PATH")
-          APP_DIR=$(dirname "$APP_PATH")
           VERSION_CLEAN=${{ env.VERSION }}
-          ZIP_NAME="PlistEditor-${VERSION_CLEAN}-Universal.zip"
-          DMG_NAME="PlistEditor-${VERSION_CLEAN}-Universal.dmg"
           
-          # 强制自内而外执行 Ad-hoc 代码签名，以确保 ARM64 下嵌套的 Sparkle.framework 和 App 的 PAC 校验完美通过
-          if [ -d "$APP_PATH/Contents/Frameworks/Sparkle.framework" ]; then
-            echo "Signing nested Sparkle.framework..."
-            codesign --force --sign - --timestamp=none "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/A/Resources/Autoupdate.app" 2>/dev/null || true
-            codesign --force --sign - --timestamp=none "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/Resources/Autoupdate.app" 2>/dev/null || true
-            codesign --force --sign - --timestamp=none "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/Helpers/Updater.app" 2>/dev/null || true
-            codesign --force --sign - --timestamp=none "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B"
+          mkdir -p Build/Universal Build/arm64
+          cp -R "$APP_PATH" Build/Universal/
+          
+          # Universal Code Signing
+          if [ -d "Build/Universal/PlistEditor.app/Contents/Frameworks/Sparkle.framework" ]; then
+            codesign --force --sign - --timestamp=none "Build/Universal/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/A/Resources/Autoupdate.app" 2>/dev/null || true
+            codesign --force --sign - --timestamp=none "Build/Universal/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/B/Resources/Autoupdate.app" 2>/dev/null || true
+            codesign --force --sign - --timestamp=none "Build/Universal/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/B/Helpers/Updater.app" 2>/dev/null || true
+            codesign --force --sign - --timestamp=none "Build/Universal/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/B" 2>/dev/null || true
           fi
-          echo "Signing PlistEditor.app shell..."
-          codesign --force --sign - --timestamp=none --deep "$APP_PATH"
+          codesign --force --sign - --timestamp=none --deep "Build/Universal/PlistEditor.app"
           
-          cd "$APP_DIR"
-          zip -r "$GITHUB_WORKSPACE/$ZIP_NAME" "$APP_NAME"
-          cd -
+          # 1. Universal ZIP & DMG
+          cd Build/Universal
+          zip -qy -r "$GITHUB_WORKSPACE/PlistEditor-${VERSION_CLEAN}-universal.zip" "PlistEditor.app"
+          cd "$GITHUB_WORKSPACE"
           
-          mkdir -p dmg_root
-          cp -R "$APP_PATH" dmg_root/
-          hdiutil create -volname "PlistEditor" -srcfolder dmg_root -ov -format UDZO "$DMG_NAME"
+          mkdir -p dmg_root_universal
+          cp -R Build/Universal/PlistEditor.app dmg_root_universal/
+          hdiutil create -volname "PlistEditor" -srcfolder dmg_root_universal -ov -format UDZO "PlistEditor-${VERSION_CLEAN}-universal.dmg"
+          rm -rf dmg_root_universal
+
+          # 2. arm64 Thinning & Signing
+          cp -R Build/Universal/PlistEditor.app Build/arm64/
+          lipo -thin arm64 Build/arm64/PlistEditor.app/Contents/MacOS/PlistEditor -output Build/arm64/PlistEditor.app/Contents/MacOS/PlistEditor
+          if [ -d "Build/arm64/PlistEditor.app/Contents/Frameworks/Sparkle.framework" ]; then
+            if lipo -info Build/arm64/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle 2>/dev/null | grep -q 'x86_64'; then
+              lipo -thin arm64 Build/arm64/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle -output Build/arm64/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle 2>/dev/null || true
+            fi
+            codesign --force --sign - --timestamp=none "Build/arm64/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/A/Resources/Autoupdate.app" 2>/dev/null || true
+            codesign --force --sign - --timestamp=none "Build/arm64/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/B/Resources/Autoupdate.app" 2>/dev/null || true
+            codesign --force --sign - --timestamp=none "Build/arm64/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/B/Helpers/Updater.app" 2>/dev/null || true
+            codesign --force --sign - --timestamp=none "Build/arm64/PlistEditor.app/Contents/Frameworks/Sparkle.framework/Versions/B" 2>/dev/null || true
+          fi
+          codesign --force --sign - --timestamp=none --deep "Build/arm64/PlistEditor.app"
+
+          # arm64 ZIP & DMG
+          cd Build/arm64
+          zip -qy -r "$GITHUB_WORKSPACE/PlistEditor-${VERSION_CLEAN}-arm64.zip" "PlistEditor.app"
+          cd "$GITHUB_WORKSPACE"
           
-          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
-          echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
+          mkdir -p dmg_root_arm64
+          cp -R Build/arm64/PlistEditor.app dmg_root_arm64/
+          hdiutil create -volname "PlistEditor" -srcfolder dmg_root_arm64 -ov -format UDZO "PlistEditor-${VERSION_CLEAN}-arm64.dmg"
+          rm -rf dmg_root_arm64
+
+          echo "ZIP_NAME=PlistEditor-${VERSION_CLEAN}-universal.zip" >> $GITHUB_ENV
+          echo "DMG_NAME=PlistEditor-${VERSION_CLEAN}-universal.dmg" >> $GITHUB_ENV
 
       - name: Extract Release Notes (en & zh)
         run: |
@@ -200,7 +223,8 @@ jobs:
 
           # 3. 准备发布目录
           mkdir -p deploy
-          cp "${{ env.ZIP_NAME }}" deploy/
+          cp "$GITHUB_WORKSPACE/PlistEditor-${VERSION_CLEAN}-universal.zip" deploy/
+          cp "$GITHUB_WORKSPACE/PlistEditor-${VERSION_CLEAN}-arm64.zip" deploy/
           # 准备多语言更新日志文件
           cp release_notes_en.md "deploy/release_notes_en.md"
           cp release_notes_zh.md "deploy/release_notes_zh.md"
@@ -246,8 +270,10 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            ${{ env.ZIP_NAME }}
-            ${{ env.DMG_NAME }}
+            PlistEditor-*-universal.zip
+            PlistEditor-*-universal.dmg
+            PlistEditor-*-arm64.zip
+            PlistEditor-*-arm64.dmg
             release_notes_en.md
             release_notes_zh.md
             appcast.xml
