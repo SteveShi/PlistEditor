@@ -224,7 +224,6 @@ jobs:
           # 3. 准备发布目录
           mkdir -p deploy
           cp "$GITHUB_WORKSPACE/PlistEditor-${VERSION_CLEAN}-universal.zip" deploy/
-          cp "$GITHUB_WORKSPACE/PlistEditor-${VERSION_CLEAN}-arm64.zip" deploy/
           # 准备多语言更新日志文件
           cp release_notes_en.md "deploy/release_notes_en.md"
           cp release_notes_zh.md "deploy/release_notes_zh.md"
