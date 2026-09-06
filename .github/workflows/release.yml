@@ -18,7 +18,7 @@ jobs:
       skipped: ${{ steps.check_version.outputs.skipped }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Extract Version from Changelog
         id: get_version
@@ -57,7 +57,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Prepare Environment
         run: |
