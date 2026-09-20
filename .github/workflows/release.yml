@@ -208,6 +208,7 @@ jobs:
           SPARKLE_SECRET: ${{ secrets.SPARKLE_PRIVATE_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION_CLEAN=${{ env.VERSION }}
           # 1. 获取最新 Sparkle 版本并下载工具
           SPARKLE_VERSION=$(gh api repos/sparkle-project/Sparkle/releases/latest --jq '.tag_name' | sed 's/^v//')
           curl -fL -H "User-Agent: curl" -o Sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
