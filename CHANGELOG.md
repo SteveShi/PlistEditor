@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.1.5] - 2026-09-20
+
+<div lang="en">
+
+### Fixed
+- Fixed an issue where saving an edited document triggered an unintended external file reload, causing all expanded outline items to collapse and requiring a second Cmd+S to persist changes.
+- Fixed an issue where edited documents did not show the macOS standard dark-dot/shadow edited indicator in the window close button.
+
+</div>
+
+### Chinese
+
+---
+
+<div lang="zh">
+
+### 修复
+- 修复了保存修改后的 plist 文件时触发自身写盘误重载、导致所有展开的大纲项被收起且需保存两次的问题。
+- 修复了已编辑文件在窗口关闭按钮上未显示 macOS 默认淡灰色阴影（已编辑状态小黑点指示器）的问题。
+
+</div>
+
 ## [1.1.4] - 2026-07-23
 
 <div lang="en">

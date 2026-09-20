@@ -27,6 +27,13 @@ final class PlistDocument: NSObject, ReferenceFileDocument, @unchecked Sendable 
     /// Per-node "View As" presentation overrides (display state, not persisted).
     @Published var viewAs: [PlistNode.ID: ValueFormatter] = [:]
 
+    /// Cached copy of the last serialized data snapshot from self-save,
+    /// used by FileWatcher to detect and ignore self-induced modifications.
+    @Published var lastSavedSnapshot: Data?
+
+    /// Whether the document currently has unsaved modifications.
+    @Published var isModified: Bool = false
+
     override init() {
         root = PlistNode(kind: .dictionary([]))
         format = AppSettings.storedDefaultFormat
@@ -48,7 +55,17 @@ final class PlistDocument: NSObject, ReferenceFileDocument, @unchecked Sendable 
     }
 
     func snapshot(contentType: UTType) throws -> Data {
-        try PlistSerializer.data(from: root, format: format, jsonIndented: AppSettings.storedJSONSaveIndented)
+        let data = try PlistSerializer.data(from: root, format: format, jsonIndented: AppSettings.storedJSONSaveIndented)
+        if Thread.isMainThread {
+            self.lastSavedSnapshot = data
+            self.isModified = false
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.lastSavedSnapshot = data
+                self?.isModified = false
+            }
+        }
+        return data
     }
 
     nonisolated func fileWrapper(snapshot: Data, configuration: WriteConfiguration) throws -> FileWrapper {
@@ -66,6 +83,8 @@ final class PlistDocument: NSObject, ReferenceFileDocument, @unchecked Sendable 
 
     /// Called after every structural or value mutation of the outline.
     func didMutateOutline() {
+        isModified = true
+        objectWillChange.send()
         if autoSyncText { regenerateSourceText() }
     }
 
@@ -83,6 +102,8 @@ final class PlistDocument: NSObject, ReferenceFileDocument, @unchecked Sendable 
 
     @MainActor
     func setRoot(_ newRoot: PlistNode, format newFormat: PlistFormat, undoManager: UndoManager?) {
+        isModified = (undoManager != nil)
+        objectWillChange.send()
         let oldRoot = root
         let oldFormat = format
         root = newRoot
@@ -98,6 +119,8 @@ final class PlistDocument: NSObject, ReferenceFileDocument, @unchecked Sendable 
     @MainActor
     func setFormat(_ newFormat: PlistFormat, undoManager: UndoManager?) {
         guard newFormat != format else { return }
+        isModified = (undoManager != nil)
+        objectWillChange.send()
         let oldFormat = format
         format = newFormat
         undoManager?.registerUndo(withTarget: self) { document in

@@ -7,15 +7,8 @@ struct ContentView: View {
     var fileURL: URL?
     @State private var selection = Set<PlistNode.ID>()
     @State private var expanded = Set<PlistNode.ID>()
-    @Environment(\.undoManager) private var envUndoManager
-
-    private var undoManager: UndoManager? {
-        #if os(macOS)
-        return NSDocumentController.shared.currentDocument?.undoManager ?? envUndoManager
-        #else
-        return envUndoManager
-        #endif
-    }
+    @Environment(\.undoManager) private var undoManager
+    @State private var window: NSWindow?
 
     @State private var findVisible = false
     @State private var findQuery = ""
@@ -97,6 +90,26 @@ struct ContentView: View {
             }
         } message: {
             Text("revert.alert.message")
+        }
+        .background(WindowAccessor { win in
+            self.window = win
+            win.isDocumentEdited = document.isModified
+        })
+        .onChange(of: document.isModified) { newValue in
+            window?.isDocumentEdited = newValue
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSUndoManagerDidUndoChange)) { _ in
+            if let um = undoManager, !um.canUndo {
+                document.isModified = false
+                window?.isDocumentEdited = false
+            } else {
+                document.isModified = true
+                window?.isDocumentEdited = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSUndoManagerDidRedoChange)) { _ in
+            document.isModified = true
+            window?.isDocumentEdited = true
         }
     }
 
@@ -492,6 +505,13 @@ struct ContentView: View {
         // Ignore events that didn't actually change the content (e.g. metadata touch).
         if newData == lastKnownData { return }
 
+        // If the change matches what we just saved, update our baseline and ignore.
+        if let saved = document.lastSavedSnapshot, newData == saved {
+            lastKnownData = newData
+            document.lastSavedSnapshot = nil
+            return
+        }
+
         if AppSettings.shared.askToRevert {
             showRevertAlert = true
         } else {
@@ -504,7 +524,10 @@ struct ContentView: View {
         guard let fileURL, let data = try? Data(contentsOf: fileURL) else { return }
         guard let parsed = try? PlistSerializer.parse(data) else { return }
         let resolvedFormat = parsed.format.canWrite ? parsed.format : .xml
-        document.setRoot(parsed.root, format: resolvedFormat, undoManager: undoManager)
+        document.setRoot(parsed.root, format: resolvedFormat, undoManager: nil)
+        undoManager?.removeAllActions()
+        document.isModified = false
+        window?.isDocumentEdited = false
         lastKnownData = data
     }
 
@@ -762,6 +785,29 @@ struct ContentView: View {
     private func sortValuesOfSelected() {
         for container in targetContainers(matching: { $0.isContainer }) {
             document.sortValues(of: container, undoManager: undoManager)
+        }
+    }
+}
+
+/// Helper view that captures the hosting NSWindow for syncing document state.
+private struct WindowAccessor: NSViewRepresentable {
+    let onWindow: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { [weak view] in
+            if let window = view?.window {
+                onWindow(window)
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { [weak nsView] in
+            if let window = nsView?.window {
+                onWindow(window)
+            }
         }
     }
 }
