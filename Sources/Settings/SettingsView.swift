@@ -92,6 +92,17 @@ private struct DisplaySettingsTab: View {
 
     var body: some View {
         Form {
+            Section("settings.display.theme") {
+                Picker("settings.display.theme", selection: $settings.theme) {
+                    ForEach(AppTheme.allCases) { theme in
+                        Label(theme.localizationKey, systemImage: theme.systemImage)
+                            .tag(theme)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+
             FontRow(titleKey: "settings.display.outlineFont", font: $settings.outlineFont)
             FontRow(titleKey: "settings.display.textFont", font: $settings.textFont)
             FontRow(titleKey: "settings.display.browserFont", font: $settings.browserFont)
