@@ -15,7 +15,6 @@ enum ThemeController {
     }
 
     static func applyStoredTheme() {
-        let raw = UserDefaults.standard.string(forKey: "display.theme") ?? ""
-        apply(theme: AppTheme(rawValue: raw) ?? .system)
+        apply(theme: AppSettings.storedTheme)
     }
 }

@@ -12,6 +12,7 @@ enum SettingsKey {
     static let rememberFormatterByKey = "general.rememberFormatterByKey"
     static let returnEditsNextRow = "general.returnEditsNextRow"
 
+    static let theme = "display.theme"
     static let outlineFontName = "display.outlineFont.name"
     static let outlineFontSize = "display.outlineFont.size"
     static let textFontName = "display.textFont.name"
@@ -110,6 +111,14 @@ final class AppSettings: ObservableObject {
 
     // MARK: Display
 
+    var theme: AppTheme {
+        get { Self.storedTheme }
+        set {
+            set(newValue.rawValue, SettingsKey.theme)
+            ThemeController.apply(theme: newValue)
+        }
+    }
+
     var outlineFont: FontSetting {
         get { font(SettingsKey.outlineFontName, SettingsKey.outlineFontSize, defaultSize: 13) }
         set { setFont(newValue, SettingsKey.outlineFontName, SettingsKey.outlineFontSize) }
@@ -180,6 +189,11 @@ final class AppSettings: ObservableObject {
 /// Thread-safe accessors for the handful of settings read off the main actor
 /// (during background file reads/writes). `UserDefaults` is itself thread-safe.
 extension AppSettings {
+    nonisolated static var storedTheme: AppTheme {
+        let raw = UserDefaults.standard.string(forKey: SettingsKey.theme) ?? ""
+        return AppTheme(rawValue: raw) ?? .system
+    }
+
     nonisolated static var storedDefaultFormat: PlistFormat {
         PlistFormat(rawValue: UserDefaults.standard.string(forKey: SettingsKey.defaultFormat) ?? "") ?? .xml
     }
