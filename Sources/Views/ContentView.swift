@@ -210,16 +210,27 @@ struct ContentView: View {
         }
 
         ToolbarItem(placement: .primaryAction) {
-            Picker(selection: formatBinding) {
+            Menu {
                 ForEach(PlistFormat.selectable) { format in
-                    Text(verbatim: format.displayName).tag(format)
+                    Button {
+                        document.setFormat(format, undoManager: undoManager)
+                    } label: {
+                        if format == document.format {
+                            Label(format.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(verbatim: format.displayName)
+                        }
+                    }
                 }
             } label: {
-                Text("toolbar.format")
+                HStack(spacing: 4) {
+                    Text(verbatim: document.format.displayName)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .pickerStyle(.menu)
             .help("toolbar.format")
-            .fixedSize()
         }
     }
 
@@ -235,12 +246,6 @@ struct ContentView: View {
         return node
     }
 
-    private var formatBinding: Binding<PlistFormat> {
-        Binding(
-            get: { document.format },
-            set: { document.setFormat($0, undoManager: undoManager) }
-        )
-    }
 
     // MARK: Selection
 

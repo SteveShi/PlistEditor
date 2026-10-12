@@ -5,7 +5,7 @@
 <div lang="en">
 
 ### Fixed
-- Fixed an issue where the Format popup button in the toolbar compressed into an empty pill displaying only arrows without text.
+- Fixed an issue where the Format popup button in the toolbar compressed into an empty pill displaying only arrows without text by replacing the toolbar picker with a native Menu.
 - Improved the "View As" toolbar item by adding the standard `eye` system symbol and tooltip, clearly identifying its purpose even when disabled for unsupported node types.
 
 </div>
@@ -17,7 +17,7 @@
 <div lang="zh">
 
 ### 修复
-- 修复了工具栏中文件格式切换器（Format Popup）文本被系统挤压、显示为空白胶囊按钮的问题。
+- 修复了工具栏中文件格式切换器（Format Popup）文本被系统挤压、显示为空白胶囊按钮的问题（使用原生 Menu 彻底替代 Picker，根治 macOS 工具栏空间受限时的文字剥离问题）。
 - 优化了工具栏“查看为”（View As）按钮，增加标准眼睛图标及悬停提示，便于在未选中对应节点类型时识别其功能。
 
 </div>
