@@ -27,7 +27,9 @@ struct SourcePane: View {
         VStack(spacing: 0) {
             syncBar
             Divider()
-            SourceTextView(text: $document.sourceText, format: document.format)
+            SourceTextView(text: $document.sourceText, format: document.format) {
+                document.isModified = true
+            }
         }
         .alert("error.sync.title", isPresented: errorPresented, presenting: document.syncError) { _ in
             Button("action.ok", role: .cancel) {}

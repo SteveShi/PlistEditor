@@ -6,6 +6,8 @@
 
 ### Fixed
 - Fixed an issue where the Format popup button in the toolbar compressed into an empty pill displaying only arrows without text by replacing the toolbar picker with a native Menu.
+- Cleaned up redundant duplicate chevron arrows on the Format menu button, keeping a single native dropdown indicator.
+- Fixed an issue where edited documents did not show the macOS standard dark dirty-dot indicator inside the window close button (red dot) upon modifications.
 - Improved the "View As" toolbar item by adding the standard `eye` system symbol and tooltip, clearly identifying its purpose even when disabled for unsupported node types.
 
 </div>
@@ -18,6 +20,8 @@
 
 ### 修复
 - 修复了工具栏中文件格式切换器（Format Popup）文本被系统挤压、显示为空白胶囊按钮的问题（使用原生 Menu 彻底替代 Picker，根治 macOS 工具栏空间受限时的文字剥离问题）。
+- 修复了格式切换按钮右侧多余出现两个箭头图标的问题，精简为原生单个下拉指示器。
+- 修复了编辑修改文件时窗口关闭按钮（红点）未正常显示 macOS 经典深色“已编辑”圆点指示器（dirty dot）的问题。
 - 优化了工具栏“查看为”（View As）按钮，增加标准眼睛图标及悬停提示，便于在未选中对应节点类型时识别其功能。
 
 </div>

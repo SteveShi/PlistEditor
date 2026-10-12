@@ -7,6 +7,7 @@ import AppKit
 struct SourceTextView: NSViewRepresentable {
     @Binding var text: String
     let format: PlistFormat
+    var onTextChange: (() -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -72,6 +73,7 @@ struct SourceTextView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
+            parent.onTextChange?()
             let settings = AppSettings.shared
             SourceHighlighter.apply(
                 to: textView.textStorage,

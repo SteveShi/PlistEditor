@@ -8,7 +8,6 @@ struct ContentView: View {
     @State private var selection = Set<PlistNode.ID>()
     @State private var expanded = Set<PlistNode.ID>()
     @Environment(\.undoManager) private var undoManager
-    @State private var window: NSWindow?
 
     @State private var findVisible = false
     @State private var findQuery = ""
@@ -91,25 +90,19 @@ struct ContentView: View {
         } message: {
             Text("revert.alert.message")
         }
-        .background(WindowAccessor { win in
-            self.window = win
-            win.isDocumentEdited = document.isModified
-        })
-        .onChange(of: document.isModified) { newValue in
-            window?.isDocumentEdited = newValue
+        .background(WindowDocumentSync(isEdited: document.isModified))
+        .onReceive(NotificationCenter.default.publisher(for: .NSUndoManagerCheckpoint)) { _ in
+            document.isModified = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSUndoManagerDidUndoChange)) { _ in
             if let um = undoManager, !um.canUndo {
                 document.isModified = false
-                window?.isDocumentEdited = false
             } else {
                 document.isModified = true
-                window?.isDocumentEdited = true
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSUndoManagerDidRedoChange)) { _ in
             document.isModified = true
-            window?.isDocumentEdited = true
         }
     }
 
@@ -223,12 +216,7 @@ struct ContentView: View {
                     }
                 }
             } label: {
-                HStack(spacing: 4) {
-                    Text(verbatim: document.format.displayName)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+                Text(verbatim: document.format.displayName)
             }
             .help("toolbar.format")
         }
@@ -535,7 +523,6 @@ struct ContentView: View {
         document.setRoot(parsed.root, format: resolvedFormat, undoManager: nil)
         undoManager?.removeAllActions()
         document.isModified = false
-        window?.isDocumentEdited = false
         lastKnownData = data
     }
 
@@ -797,24 +784,34 @@ struct ContentView: View {
     }
 }
 
-/// Helper view that captures the hosting NSWindow for syncing document state.
-private struct WindowAccessor: NSViewRepresentable {
-    let onWindow: (NSWindow) -> Void
+/// Direct NSViewRepresentable that keeps the host NSWindow's isDocumentEdited state
+/// strictly synchronized with the document's dirty status.
+private struct WindowDocumentSync: NSViewRepresentable {
+    let isEdited: Bool
 
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async { [weak view] in
-            if let window = view?.window {
-                onWindow(window)
-            }
-        }
+    func makeNSView(context: Context) -> SyncView {
+        let view = SyncView()
+        view.isEdited = isEdited
         return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async { [weak nsView] in
-            if let window = nsView?.window {
-                onWindow(window)
+    func updateNSView(_ nsView: SyncView, context: Context) {
+        nsView.isEdited = isEdited
+        nsView.sync()
+    }
+
+    final class SyncView: NSView {
+        var isEdited: Bool = false
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            sync()
+        }
+
+        func sync() {
+            guard let window else { return }
+            if window.isDocumentEdited != isEdited {
+                window.isDocumentEdited = isEdited
             }
         }
     }
