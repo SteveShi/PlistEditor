@@ -45,7 +45,7 @@ struct SourceTextView: NSViewRepresentable {
     private var styleKey: String {
         let settings = AppSettings.shared
         let font = settings.textFont
-        return "\(format.rawValue)|\(font.name)|\(font.size)|\(settings.colorXMLTags)|\(settings.xmlTagColor.hexString)"
+        return "\(format.rawValue)|\(font.name)|\(font.size)|\(settings.colorXMLTags)|\(settings.xmlTagColor.hexString)|\(settings.theme.rawValue)"
     }
 
     @MainActor

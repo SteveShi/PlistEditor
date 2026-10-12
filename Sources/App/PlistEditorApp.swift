@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct PlistEditorApp: App {
+    @ObservedObject private var settings = AppSettings.shared
     @Environment(\.openWindow) private var openWindow
     @StateObject private var updater = Updater()
 
@@ -11,11 +12,13 @@ struct PlistEditorApp: App {
 
     init() {
         LanguageController.applyStoredLanguage()
+        ThemeController.applyStoredTheme()
     }
 
     var body: some Scene {
         DocumentGroup(newDocument: { PlistDocument() }) { configuration in
             ContentView(document: configuration.document, fileURL: configuration.fileURL)
+                .preferredColorScheme(settings.theme.colorScheme)
         }
         .commands {
             OperationsCommands()
@@ -35,10 +38,12 @@ struct PlistEditorApp: App {
 
         Settings {
             SettingsView()
+                .preferredColorScheme(settings.theme.colorScheme)
         }
 
         Window("browser.title", id: "preferences-browser") {
             PreferenceBrowserView()
+                .preferredColorScheme(settings.theme.colorScheme)
         }
         .defaultSize(width: 800, height: 500)
     }
