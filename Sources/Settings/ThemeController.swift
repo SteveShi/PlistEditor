@@ -4,13 +4,14 @@ import AppKit
 @MainActor
 enum ThemeController {
     static func apply(theme: AppTheme) {
+        let app = NSApplication.shared
         switch theme {
         case .system:
-            NSApp.appearance = nil
+            app.appearance = nil
         case .light:
-            NSApp.appearance = NSAppearance(named: .aqua)
+            app.appearance = NSAppearance(named: .aqua)
         case .dark:
-            NSApp.appearance = NSAppearance(named: .darkAqua)
+            app.appearance = NSAppearance(named: .darkAqua)
         }
     }
 
