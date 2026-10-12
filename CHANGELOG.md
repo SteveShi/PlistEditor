@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.1.6] - 2026-10-12
+
+<div lang="en">
+
+### Fixed
+- Fixed an issue where the Format popup button in the toolbar compressed into an empty pill displaying only arrows without text.
+- Improved the "View As" toolbar item by adding the standard `eye` system symbol and tooltip, clearly identifying its purpose even when disabled for unsupported node types.
+
+</div>
+
+### Chinese
+
+---
+
+<div lang="zh">
+
+### 修复
+- 修复了工具栏中文件格式切换器（Format Popup）文本被系统挤压、显示为空白胶囊按钮的问题。
+- 优化了工具栏“查看为”（View As）按钮，增加标准眼睛图标及悬停提示，便于在未选中对应节点类型时识别其功能。
+
+</div>
+
 ## [1.1.5] - 2026-09-20
 
 <div lang="en">

@@ -165,8 +165,9 @@ struct ContentView: View {
                     }
                 }
             } label: {
-                Text("toolbar.viewAs")
+                Label("toolbar.viewAs", systemImage: "eye")
             }
+            .help("toolbar.viewAs")
             .disabled(viewAsNode == nil)
         }
 
@@ -217,6 +218,8 @@ struct ContentView: View {
                 Text("toolbar.format")
             }
             .pickerStyle(.menu)
+            .help("toolbar.format")
+            .fixedSize()
         }
     }
 
